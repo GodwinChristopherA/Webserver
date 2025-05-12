@@ -1,0 +1,18 @@
+# Define the modules and their versions
+$modules = @(
+    @{Name = "xWebAdministration"; Version = "latest"},
+    @{Name = "PsDesiredStateConfiguration"; Version = "1.1"}
+)
+
+foreach ($module in $modules) {
+    $installedModule = Get-InstalledModule -Name $module.Name -ErrorAction SilentlyContinue
+    if ($null -eq $installedModule) {
+        Write-Host "Installing module $($module.Name)..."
+        Install-Module -Name $module.Name -Force
+        if ($module.Version -ne "latest") {
+            Install-Module -Name $module.Name -Version $module.Version -Force
+        }
+    } else {
+        Write-Host "Module $($module.Name) is already installed."
+    }
+}
