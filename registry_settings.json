@@ -1,0 +1,10 @@
+{
+ "EventViewerLogs": [
+ "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application",
+ "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\EventLog\\Security",
+ "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\EventLog\\System",
+ "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WINEVT\\Channels\\Microsoft-IIS-Configuration/Operational"
+ ]
+ 
+}
+ 

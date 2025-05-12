@@ -1,0 +1,112 @@
+{
+  "Directories": [
+    {
+      "Path": "c:\\Webserver\\e\\IIS\\logs\\LogFiles",
+      "Identity": null,
+      "Rights": null,
+      "Remove Existing": false
+    },
+    {
+      "Path": "c:\\Webserver\\e\\IIS\\logs\\FailedReqLogFiles",
+      "Identity": null,
+      "Rights": null,
+      "Remove Existing": false
+    },
+    {
+      "Path": "c:\\Webserver\\c\\inetpub",
+      "Identity": null,
+      "Rights": null,
+      "Remove Existing": false
+    },
+    {
+      "Path": "c:\\Webserver\\c\\inetpub\\custerr",
+      "Identity": null,
+      "Rights": null,
+      "Remove Existing": false
+    },
+    {
+      "Path": "c:\\Webserver\\c\\inetpub\\wwwroot",
+      "Identity": null,
+      "Rights": null,
+      "Remove Existing": false
+    },
+    {
+      "Path": "c:\\Webserver\\c\\Windows\\system32\\inetsrv\\appcmd.xml",
+      "Identity": "Administrators",
+      "Rights": ["FullControl"],
+      "Remove Existing": false
+    },
+    {
+      "Path": "c:\\Webserver\\e\\",
+      "Identity": "Administrator",
+      "Rights": ["FullControl"],
+      "Remove Existing": false
+    },
+    {
+      "Path": "c:\\Webserver\\e\\",
+      "Identity": "SYSTEM",
+      "Rights": ["FullControl"],
+      "Remove Existing": false
+    },
+    {
+      "Path": "c:\\Webserver\\f\\",
+      "Identity": "Administrator",
+      "Rights": ["FullControl"],
+      "Remove Existing": false
+    },
+    {
+      "Path": "c:\\Webserver\\f\\",
+      "Identity": "SYSTEM",
+      "Rights": ["FullControl"],
+      "Remove Existing": false
+    },
+    {
+      "Path": "c:\\Webserver\\e\\IIS",
+      "Identity": "Administrators",
+      "Rights": ["FullControl"],
+      "Remove Existing": false
+    },
+    {
+      "Path": "c:\\Webserver\\e\\IIS",
+      "Identity": "SYSTEM",
+      "Rights": ["FullControl"],
+      "Remove Existing": false
+    },
+    {
+      "Path": "c:\\Webserver\\e\\IIS\\logs",
+      "Identity": "Administrators",
+      "Rights": ["FullControl"],
+      "Remove Existing": false
+    },
+    {
+      "Path": "c:\\Webserver\\e\\IIS\\logs",
+      "Identity": "SYSTEM",
+      "Rights": ["FullControl"],
+      "Remove Existing": true
+    },
+    {
+      "Path": "c:\\Webserver\\f\\IIS Temporary Compressed Files",
+      "Identity": "IIS_IUSRS",
+      "Rights": ["FullControl"],
+      "Remove Existing": false
+    },
+    {
+      "Path": "c:\\Webserver\\f\\IIS Temporary Compressed Files",
+      "Identity": "IUSR",
+      "Rights": ["FullControl"],
+      "Remove Existing": false
+    },
+    {
+      "Path": "c:\\Webserver\\f\\Webdata",
+      "Identity": "IIS_IUSRS",
+      "Rights": ["ReadAndExecute"],
+      "Remove Existing": false
+    },
+    {
+      "Path": "c:\\Webserver\\f\\Webdata",
+      "Identity": "IUSR",
+      "Rights": ["ReadAndExecute"],
+      "Remove Existing": false
+    }
+  ]
+}

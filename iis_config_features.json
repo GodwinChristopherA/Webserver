@@ -1,0 +1,10 @@
+{
+"features": [
+"WAS",
+"WAS-Config-APIs",
+"WAS-Process-Model"
+],
+"features_legacy": [],
+"is_dmz": false,
+"is_server_core": false
+}
