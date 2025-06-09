@@ -1,0 +1,408 @@
+﻿param (
+#[Parameter(Mandatory = $true)]
+[string]$ConfigPath = "./config.json",
+[string]$log_tool_dir = 'E:\IIS_LOG_TOOL',
+[switch]$restartserver = $false
+)
+
+
+# Logging function
+$logPath = Join-Path -Path $PSScriptRoot -ChildPath "IIS_WebServer.log"
+function Write-Log {
+ param (
+ [string]$message,
+ [string]$type = "INFO"
+ )
+ $timestamp = Get-Date -Format "yyyy-MM-dd HH::mm::ss"
+ $logMessage = "$timestamp [$type] $message"
+ Write-Output $logMessage
+ Add-Content -Path $logPath -Value $logMessage
+}
+
+$fqdn = [System.Net.Dns]::GetHostEntry((HostName)).HostName
+$hostname = $fqdn.Split(".",2)[0]
+$domain = $fqdn.Split(".",2)[1]
+$srvload_path="\\$domain\dfs\srvload"
+ 
+try {
+# Load configuration
+ $config = Get-Content -Path $ConfigPath -Raw| ConvertFrom-Json
+ $eventViewerLogs = $config.EventViewerLogs
+ }
+catch {
+ Write-Log "Failed to read or parse JSON input file: $ConfigPath. Error: $_" "ERROR"
+ exit 1
+}
+
+# Set NTFS permissions
+function Add-Permission {
+param (
+[string]$Path,
+[string]$Identity,
+[string[]]$Rights,
+[switch]$RemoveExisting
+)
+$label=$path.Split(":")[0]
+$vol=Get-Volume -DriveLetter $label -ErrorAction SilentlyContinue
+if($vol -ne $null){
+if (-not (Test-Path $path)) {
+try {
+New-Item -ItemType Directory -Path $path -Force | Out-Null
+Write-Log "Directory $path Created"
+} catch {
+Write-Log "Failed to create directory: $path - $_" "ERROR"
+breaksnip
+}
+} else {
+Write-Log "Directory $path exists"
+}
+ 
+try {
+$acl = Get-Acl $Path
+if ($RemoveExisting) {
+$acl.Access | ForEach-Object { $acl.RemoveAccessRule($_) }
+} if($Identity){
+$rightsEnum = [System.Security.AccessControl.FileSystemRights]::None
+foreach ($right in $Rights) {
+$rightsEnum = $rightsEnum -bor [System.Security.AccessControl.FileSystemRights]::$right
+}
+$rule = New-Object System.Security.AccessControl.FileSystemAccessRule($Identity, $rightsEnum, "ContainerInherit,ObjectInherit", "None", "Allow")
+$acl.SetAccessRule($rule)
+Set-Acl -Path $Path -AclObject $acl
+write-log "Permission $rights.join(,) set to the path $path for the user $identity."
+} }catch {
+Write-Log "Failed to set permissions for $Path - $_" "ERROR"
+}}
+else{Write-Log "The drive $label is not present to proceed further" "ERROR"; exit 1}
+}
+ 
+foreach ($perm in $config.directories) {
+Add-Permission -Path $perm.Path -Identity $perm.Identity -Rights $perm.Rights @($perm.RemoveExisting)
+}
+
+$installType = Get-ItemProperty -Path "HKLM:\Software\Microsoft\Windows NT\CurrentVersion" -Name InstallationType
+if ($installType.InstallationType -eq "Server Core") {
+    $is_server_core = $true
+} else {
+    $is_server_core = $false
+}
+ 
+$features = $config.features
+$features_legacy = $config.features_legacy
+$is_dmz = $config.is_dmz
+
+ 
+function Get-FeatureState($featureName) {
+ try {
+ $feature = Get-WindowsFeature -Name $featureName
+ return $feature.Installed
+ } catch {
+ Write-Log "Failed to get feature state for '$featureName'. $_" "ERROR"
+ return $false
+ }
+}
+ 
+function Install-IISFeature($featureList) {
+ foreach ($feature in $featureList) {
+ if (-not (Get-FeatureState $feature)) {
+ try {
+ Install-WindowsFeature -Name $feature -IncludeAllSubFeature -ErrorAction Stop
+ Write-Log "Successfully installed: $feature"
+ } catch {
+ Write-Log "Failed to install feature '$feature'. $_" "ERROR"
+ }
+ } else {
+ Write-Log "Feature already installed: $feature"
+ }
+ }
+}
+ 
+function Remove-IISFeature($featureList) {
+ foreach ($feature in $featureList) {
+ if (Get-FeatureState $feature) {
+ try {
+ Remove-WindowsFeature -Name $feature -ErrorAction Stop
+ Write-Log "Successfully removed: $feature"
+ } catch {
+ Write-Log "Failed to remove feature '$feature'. $_" "ERROR"
+ }
+ }
+ }
+}
+
+if($features.length -gt 0){
+Install-IISFeature $features}
+ Install-WindowsFeature -Name Web-Server -IncludeAllSubFeature -IncludeManagementTools
+# Install legacy .NET 3.5 features
+if ($features_legacy.Length -gt 0) {
+ 
+#call .dotnet.ps1 for for instaling dotnet 3.5
+$osVersion = (Get-CimInstance Win32_OperatingSystem).Version
+$source = "$srvload_path\$osVersion\sxs"
+ 
+try {
+ # Install .NET Framework 3.5 feature
+ Install-WindowsFeature -Name Net-Framework-Core -Source $source -IncludeAllSubFeature -ErrorAction Stop
+ Write-Log ".NET Framework 3.5 installation completed successfully."
+}
+catch {
+ Write-Log "Failed to install .NET Framework 3.5: $_" "ERROR"
+}
+
+}
+ 
+#Remove specific features if in DMZ
+$features_to_disable = @('Web-Dir-Browsing')
+ 
+Remove-IISFeature $features_to_disable 
+ 
+# Install additional if not server core
+if (-not $is_server_core) {
+ Install-IISFeature @('Web-Mgmt-Console')
+}
+ 
+Write-Log "IIS Configuration Completed."
+
+$source_path ="${srvload_path}\IIS8\XOMStandardLoads\IIS_LOG_TOOL"
+ 
+# Create dummy source dir if missing
+if (-not (Test-Path $source_path)) {
+try {
+Write-Log "Creating dummy source path: $source_path"
+New-Item -ItemType Directory -Path $source_path -Force | Out-Null
+New-Item -ItemType File -Path "$source_path\dummy.txt" -Force | Out-Null
+} catch {
+Write-Log "Failed to create source path: $_" "ERROR"
+break
+}
+}
+ 
+# Ensure destination exists
+if (-not (Test-Path $log_tool_dir)) {
+try {
+Write-Log "Creating destination path: $log_tool_dir"
+New-Item -ItemType Directory -Path $log_tool_dir -Force | Out-Null
+} catch {
+Write-Log "Failed to create destination path: $_" "ERROR"
+break
+}
+} else {
+Write-Log "Destination already exists: $log_tool_dir"
+}
+ 
+# Copy files
+try {
+Write-Log "Copying files from $source_path to $log_tool_dir"
+Copy-Item -Path "$source_path\*" -Destination $log_tool_dir -Recurse -Force
+Write-Log "Files copied successfully."
+} catch {
+Write-Log "File copy failed: $_" "ERROR"
+break
+}
+ 
+# Set ACL
+function Set-IISLogToolAcl {
+param (
+[string]$targetDir
+)
+try {
+$acl = Get-Acl -Path $targetDir
+$adminRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+"Administrators", "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow"
+)
+$systemRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+"SYSTEM", "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow"
+)
+$acl.SetAccessRule($adminRule)
+$acl.SetAccessRule($systemRule)
+Set-Acl -Path $targetDir -AclObject $acl
+Write-Log "Permissions set successfully on $targetDir"
+} catch {
+Write-Log "Failed to set permissions: $_" "ERROR"
+}
+}
+ 
+Write-Log "Setting ACL permissions..."
+Set-IISLogToolAcl -targetDir $log_tool_dir
+
+$source_path ="${srvload_path}\\IIS8\\XOMStandardLoads\\IIS_LOG_TOOL"
+ 
+# Create dummy source dir if missing
+if (-not (Test-Path $source_path)) {
+try {
+Write-Log "Creating dummy source path: $source_path"
+New-Item -ItemType Directory -Path $source_path -Force | Out-Null
+New-Item -ItemType File -Path "$source_path\dummy.txt" -Force | Out-Null
+} catch {
+Write-Log "Failed to create source path: $_" "ERROR"
+break
+}
+}
+ 
+# Ensure destination exists
+if (-not (Test-Path $log_tool_dir)) {
+try {
+Write-Log "Creating destination path: $log_tool_dir"
+New-Item -ItemType Directory -Path $log_tool_dir -Force | Out-Null
+} catch {
+Write-Log "Failed to create destination path: $_" "ERROR"
+break
+}
+} else {
+Write-Log "Destination already exists: $log_tool_dir"
+}
+ 
+# Copy files
+try {
+Write-Log "Copying files from $source_path to $log_tool_dir"
+Copy-Item -Path "$source_path\*" -Destination $log_tool_dir -Recurse -Force
+Write-Log "Files copied successfully."
+} catch {
+Write-Log "File copy failed: $_" "ERROR"
+break
+}
+ 
+# Set ACL
+function Set-IISLogToolAcl {
+param (
+[string]$targetDir
+)
+try {
+$acl = Get-Acl -Path $targetDir
+$adminRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+"Administrators", "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow"
+)
+$systemRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+"SYSTEM", "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow"
+)
+$acl.SetAccessRule($adminRule)
+$acl.SetAccessRule($systemRule)
+Set-Acl -Path $targetDir -AclObject $acl
+Write-Log "Permissions set successfully on $targetDir"
+} catch {
+Write-Log "Failed to set permissions: $_" "ERROR"
+}
+}
+ 
+Write-Log "Setting ACL permissions..."
+Set-IISLogToolAcl -targetDir $log_tool_dir
+
+
+# Define the source of the installer
+$installerPath = "$srvload_path\IIS10\rewrite_amd64.msi"
+ 
+# Check if the URL Rewrite module is already installed
+$packageName = "IIS URL Rewrite Module 2"
+$installed = Get-WmiObject -Query "SELECT * FROM Win32_Product WHERE Name = '$packageName'" -ErrorAction Stop
+ 
+if (-not $installed) {
+Write-log "Installing $packageName..."
+ 
+try {
+# Install the package silently
+Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$installerPath`" /quiet /qn" -NoNewWindow -Wait -ErrorAction Stop
+}
+catch {
+Write-log "Error occurred during installation: "
+$_ | Out-File $logPath -Append
+}
+ 
+# Verify if installation was successful
+$installed = Get-WmiObject -Query "SELECT * FROM Win32_Product WHERE Name = '$packageName'" -ErrorAction Stop
+ 
+if ($installed) {
+Write-log "$packageName installed successfully."
+if($restartserver){
+Write-log "Rebooting the System..."
+Restart-Computer -Force}
+} else {
+Write-log "Installation Failed."
+}
+}
+else {
+Write-log "$packageName is already installed."
+}
+
+ $maxSize = "0x05000000"
+# Apply the registry changes
+foreach ($key in $eventViewerLogs) {
+ try {
+ Set-ItemProperty -Path $key -Name 'MaxSize' -Value $maxSize -Type DWord
+ Write-Log "Set MaxSize for $key successfully."
+ }
+ catch {
+ Write-Log "Failed to set MaxSize for $key. Error: $_" "ERROR"
+ }
+}
+[string]$log_directory = 'E:\IIS\logs\logFiles'
+[string]$trace_log_directory = 'E:\IIS\logs\FailedReqLogFiles'
+[string]$dotnet_directory = 'C:\Windows\Microsoft.NET'
+
+
+$modules = @(
+[pscustomobject]@{Name = "xWebAdministration"; Version = "3.3.0"},
+[pscustomobject]@{Name = "PsDesiredStateConfiguration"; Version = "1.1"}
+)
+foreach ($module in $modules) {
+$installedModule = Get-Module -name $module.name -ListAvailable -ErrorAction SilentlyContinue
+if ($null -eq $installedModule) {
+Write-Host "Installing module $($module.Name)..."
+Copy-Item -Path "$srvload_path\modules\$($module.name)" -Recurse -Destination "C:\windows\system32\WindowsPowerShell\v1.0\Modules\"
+#Install-Module -Name $module.Name -Force
+} else {
+Write-Host "Module $($module.Name) is already installed."
+}
+}
+ 
+configuration IISXOMConfiguration {
+param (
+[string]$log_directory,
+[string]$trace_log_directory,
+[string]$srvload_path,
+[string]$dotnet_directory = 'C:\Windows\Microsoft.NET'
+)
+ 
+Import-DscResource -ModuleName 'PSDesiredStateConfiguration'
+Import-DscResource -ModuleName 'xWebAdministration'
+$asp_x64_40_directory = Join-Path $dotnet_directory 'Framework64\v4.0.30319'
+$asp_x86_40_directory = Join-Path $dotnet_directory 'Framework\v4.0.30319'
+Node localhost {
+File AspNetConfigX64 {
+DestinationPath = Join-Path $asp_x64_40_directory 'aspnet.config'
+Type = 'File'
+Ensure = 'Present'
+SourcePath = Join-Path $srvload_path 'IIS8\XOMStandardLoads\Aspnet_x64_4.0.config'
+Force = $true
+}
+File AspNetConfigX86 {
+DestinationPath = Join-Path $asp_x86_40_directory 'aspnet.config'
+Type = 'File'
+Ensure = 'Present'
+SourcePath = Join-Path $srvload_path 'IIS8\XOMStandardLoads\Aspnet_x86_4.0.config'
+Force = $true
+}
+xIISLogging 'XOM_IIS_Logging' {
+LogPath = $log_directory
+LogFormat = 'W3C'
+LogFlags = @(
+'Date','Time','ClientIP','UserName','ServerIP','Method','UriStem','UriQuery',
+'HttpStatus','Win32Status','BytesSent','BytesRecv','TimeTaken','ServerPort',
+'ProtocolVersion','UserAgent','HttpSubStatus'
+)
+}
+xWebsiteDefaults 'XOM_IIS_Website_Defaults' {
+IsSingleInstance = 'Yes'
+LogFormat = 'W3C'
+LogDirectory = $log_directory
+TraceLogDirectory = $trace_log_directory
+}
+
+}
+}
+try {
+IISXOMConfiguration -log_directory $log_directory -srvload_path $srvload_path -dotnet_directory $dotnet_directory -trace_log_directory $trace_log_directory
+Start-DscConfiguration -Path .\IISXOMConfiguration -Wait -Force -Verbose
+}
+catch {
+Write-log " Failed to configure "
+}

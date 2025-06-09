@@ -1,0 +1,126 @@
+﻿{
+ "Directories": [
+ {
+ "Path": "E:\\IIS\\logs\\LogFiles",
+ "Identity": null,
+ "Rights": null,
+ "Remove Existing": false
+ },
+ {
+ "Path": "E:\\IIS\\logs\\FailedReqLogFiles",
+ "Identity": null,
+ "Rights": null,
+ "Remove Existing": false
+ },
+ {
+ "Path": "C:\\inetpub",
+ "Identity": null,
+ "Rights": null,
+ "Remove Existing": false
+ },
+ {
+ "Path": "C:\\inetpub\\custerr",
+ "Identity": null,
+ "Rights": null,
+ "Remove Existing": false
+ },
+ {
+ "Path": "C:\\inetpub\\wwwroot",
+ "Identity": null,
+ "Rights": null,
+ "Remove Existing": false
+ },
+ {
+ "Path": "C:\\Windows\\system32\\inetsrv\\appcmd.xml",
+ "Identity": "Administrators",
+ "Rights": ["FullControl"],
+ "Remove Existing": false
+ },
+ {
+ "Path": "E:\\",
+ "Identity": "Administrator",
+ "Rights": ["FullControl"],
+ "Remove Existing": false
+ },
+ {
+ "Path": "E:\\",
+ "Identity": "SYSTEM",
+ "Rights": ["FullControl"],
+ "Remove Existing": false
+ },
+ {
+ "Path": "F:\\",
+ "Identity": "Administrator",
+ "Rights": ["FullControl"],
+ "Remove Existing": false
+ },
+ {
+ "Path": "F:\\",
+ "Identity": "SYSTEM",
+ "Rights": ["FullControl"],
+ "Remove Existing": false
+ },
+ {
+ "Path": "E:\\IIS",
+ "Identity": "Administrators",
+ "Rights": ["FullControl"],
+ "Remove Existing": false
+ },
+ {
+ "Path": "E:\\IIS",
+ "Identity": "SYSTEM",
+ "Rights": ["FullControl"],
+ "Remove Existing": false
+ },
+ {
+ "Path": "E:\\IIS\\logs",
+ "Identity": "Administrators",
+ "Rights": ["FullControl"],
+ "Remove Existing": false
+ },
+ {
+ "Path": "E:\\IIS\\logs",
+ "Identity": "SYSTEM",
+ "Rights": ["FullControl"],
+ "Remove Existing": true
+ },
+ {
+ "Path": "F:\\IIS Temporary Compressed Files",
+ "Identity": "IIS_IUSRS",
+ "Rights": ["FullControl"],
+ "Remove Existing": false
+ },
+ {
+ "Path": "F:\\IIS Temporary Compressed Files",
+ "Identity": "IUSR",
+ "Rights": ["FullControl"],
+ "Remove Existing": false
+ },
+ {
+ "Path": "F:\\Webdata",
+ "Identity": "IIS_IUSRS",
+ "Rights": ["ReadAndExecute"],
+ "Remove Existing": false
+ },
+ {
+ "Path": "F:\\Webdata",
+ "Identity": "IUSR",
+ "Rights": ["ReadAndExecute"],
+ "Remove Existing": false
+ }
+ ],
+ "features": [
+ "WAS",
+ "WAS-Config-APIs",
+ "WAS-Process-Model"
+ ],
+ "features_legacy": [],
+ "is_dmz": false,
+ "EventViewerLogs": [
+ "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application",
+ "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\EventLog\\Security",
+ "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\EventLog\\System",
+ "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WINEVT\\Channels\\Microsoft-IIS-Configuration/Operational"
+ ]
+}
+ 
